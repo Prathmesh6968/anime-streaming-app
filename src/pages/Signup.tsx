@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,9 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  const from = (location.state as any)?.from || '/';
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,11 +67,11 @@ export default function Signup() {
       if (data?.user) {
         toast({
           title: 'Success',
-          description: 'Account created! Please log in with your credentials.'
+          description: 'Account created! Redirecting you...'
         });
         setTimeout(() => {
-          navigate('/login', { replace: true });
-        }, 2000);
+          navigate(from, { replace: true, state: { from } });
+        }, 1500);
       }
     } catch (error) {
       console.error('Signup error:', error);
@@ -141,7 +143,11 @@ export default function Signup() {
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
               Already have an account?{' '}
-              <Link to="/login" className="text-primary hover:underline font-semibold">
+              <Link 
+                to="/login"
+                state={{ from }}
+                className="text-primary hover:underline font-semibold"
+              >
                 Sign in
               </Link>
             </p>
