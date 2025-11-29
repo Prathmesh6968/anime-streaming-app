@@ -51,7 +51,10 @@ export default function Signup() {
       setLoading(true);
       const { data, error } = await supabase.auth.signUp({
         email,
-        password
+        password,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
       });
 
       if (error) {
@@ -65,6 +68,23 @@ export default function Signup() {
       }
 
       if (data?.user) {
+        // Create user profile if signup succeeded
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id,
+              email: data.user.email,
+              role: 'user'
+            }
+          ])
+          .select();
+
+        if (profileError) {
+          console.warn('Profile creation warning:', profileError);
+          // Don't fail signup even if profile creation fails
+        }
+
         toast({
           title: 'Success',
           description: 'Account created! Redirecting you...'
