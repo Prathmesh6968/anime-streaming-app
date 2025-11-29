@@ -42,6 +42,7 @@ export interface Episode {
   id: string;
   anime_id: string;
   episode_number: number;
+  season_number: number;
   title: string | null;
   description: string | null;
   video_url: string;
