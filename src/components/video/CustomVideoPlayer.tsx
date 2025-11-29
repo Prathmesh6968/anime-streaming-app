@@ -16,14 +16,14 @@ interface CustomVideoPlayerProps {
 export function CustomVideoPlayer({
   src,
   episodeId,
-  title,
+  title: _title,
   savedPosition = 0,
   onProgressUpdate,
   onVideoEnd
 }: CustomVideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumePosition, setResumePosition] = useState(0);
