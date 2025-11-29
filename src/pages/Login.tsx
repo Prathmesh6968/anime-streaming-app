@@ -112,7 +112,11 @@ export default function Login() {
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
               Don't have an account?{' '}
-              <Link to="/signup" className="text-primary hover:underline font-semibold">
+              <Link 
+                to="/signup" 
+                state={{ from: location.state?.from }}
+                className="text-primary hover:underline font-semibold"
+              >
                 Create one
               </Link>
             </p>
