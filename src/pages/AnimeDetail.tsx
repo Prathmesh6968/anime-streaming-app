@@ -28,6 +28,7 @@ export default function AnimeDetail() {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [reviews, setReviews] = useState<ReviewWithUser[]>([]);
   const [inWatchlist, setInWatchlist] = useState(false);
+  const [selectedSeason, setSelectedSeason] = useState(1);
   const [userReview, setUserReview] = useState<{ rating: number; comment: string }>({
     rating: 5,
     comment: ''
@@ -344,31 +345,65 @@ export default function AnimeDetail() {
 
             <div>
               <h2 className="text-2xl font-bold mb-4">Episodes</h2>
-              {episodes.length === 0 ? (
+              {episodes.length > 0 && (
+                (() => {
+                  const uniqueSeasons = Array.from(
+                    new Set(episodes.map(ep => ep.season_number || 1))
+                  ).sort((a, b) => a - b);
+                  const filteredEpisodes = episodes.filter(ep => (ep.season_number || 1) === selectedSeason);
+
+                  return (
+                    <>
+                      {uniqueSeasons.length > 1 && (
+                        <div className="mb-6 flex flex-wrap gap-2">
+                          {uniqueSeasons.map((season) => (
+                            <Button
+                              key={season}
+                              onClick={() => setSelectedSeason(season)}
+                              variant={selectedSeason === season ? 'default' : 'outline'}
+                              className="px-4 py-2"
+                            >
+                              Season {season}
+                            </Button>
+                          ))}
+                        </div>
+                      )}
+                      {filteredEpisodes.length === 0 ? (
+                        <Card>
+                          <CardContent className="p-8 text-center text-muted-foreground">
+                            No episodes in this season yet
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+                          {filteredEpisodes.map((episode) => (
+                            <Link key={episode.id} to={`/watch/${episode.id}`}>
+                              <Card className="group hover:shadow-glow transition-all duration-300">
+                                <CardContent className="p-4">
+                                  <div className="font-semibold mb-1">
+                                    Episode {episode.episode_number}
+                                  </div>
+                                  {episode.title && (
+                                    <div className="text-sm text-muted-foreground line-clamp-2">
+                                      {episode.title}
+                                    </div>
+                                  )}
+                                </CardContent>
+                              </Card>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()
+              )}
+              {episodes.length === 0 && (
                 <Card>
                   <CardContent className="p-8 text-center text-muted-foreground">
                     No episodes available yet
                   </CardContent>
                 </Card>
-              ) : (
-                <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-                  {episodes.map((episode) => (
-                    <Link key={episode.id} to={`/watch/${episode.id}`}>
-                      <Card className="group hover:shadow-glow transition-all duration-300">
-                        <CardContent className="p-4">
-                          <div className="font-semibold mb-1">
-                            Episode {episode.episode_number}
-                          </div>
-                          {episode.title && (
-                            <div className="text-sm text-muted-foreground line-clamp-2">
-                              {episode.title}
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  ))}
-                </div>
               )}
             </div>
 
