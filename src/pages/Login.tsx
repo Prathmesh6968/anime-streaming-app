@@ -66,28 +66,24 @@ export default function Login() {
     }
   };
 
-  const handleGoogleSSO = async () => {
+  const handleGoogleLogin = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signInWithSSO({
-        domain: 'miaoda-gg.com',
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
         options: {
           redirectTo: window.location.origin
         }
       });
 
       if (error) {
-        console.error('SSO login failed:', error);
+        console.error('Google login failed:', error);
         toast({
           title: 'Login Failed',
-          description: 'Unable to connect to authentication service. Please try again.',
+          description: error.message || 'Unable to connect to Google. Please try again.',
           variant: 'destructive'
         });
         return;
-      }
-
-      if (data?.url) {
-        window.open(data.url, '_self');
       }
     } catch (error) {
       console.error('Login error:', error);
@@ -169,7 +165,7 @@ export default function Login() {
                 Sign in with Email & Password
               </Button>
               <Button
-                onClick={handleGoogleSSO}
+                onClick={handleGoogleLogin}
                 disabled={loading}
                 className="w-full"
                 size="lg"
