@@ -22,10 +22,12 @@ export default function Admin() {
   const { toast } = useToast();
 
   const [anime, setAnime] = useState<Anime[]>([]);
+  const [episodes, setEpisodes] = useState<any[]>([]);
   const [users, setUsers] = useState<Profile[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [episodeDialogOpen, setEpisodeDialogOpen] = useState(false);
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
+  const [selectedEpisode, setSelectedEpisode] = useState<any | null>(null);
   const [animeForm, setAnimeForm] = useState({
     title: '',
     description: '',
@@ -72,6 +74,18 @@ export default function Admin() {
       ]);
       setAnime(animeData);
       setUsers(usersData);
+      
+      // Load all episodes
+      const allEpisodes: any[] = [];
+      for (const item of animeData) {
+        try {
+          const eps = await episodeApi.getByAnimeId(item.id);
+          allEpisodes.push(...eps);
+        } catch (e) {
+          console.error('Error loading episodes for anime:', e);
+        }
+      }
+      setEpisodes(allEpisodes);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -178,9 +192,16 @@ export default function Admin() {
         thumbnail_url: episodeForm.thumbnail_url || null
       };
 
-      await episodeApi.create(data);
-      toast({ title: 'Episode created successfully' });
+      if (selectedEpisode) {
+        await episodeApi.update(selectedEpisode.id, data);
+        toast({ title: 'Episode updated successfully' });
+      } else {
+        await episodeApi.create(data);
+        toast({ title: 'Episode created successfully' });
+      }
+
       setEpisodeDialogOpen(false);
+      setSelectedEpisode(null);
       setEpisodeForm({
         anime_id: '',
         episode_number: '',
@@ -191,11 +212,44 @@ export default function Admin() {
         duration: '',
         thumbnail_url: ''
       });
+      loadData();
     } catch (error) {
-      console.error('Error creating episode:', error);
+      console.error('Error saving episode:', error);
       toast({
         title: 'Error',
-        description: 'Failed to create episode',
+        description: 'Failed to save episode',
+        variant: 'destructive'
+      });
+    }
+  };
+
+  const handleEpisodeEdit = (episode: any) => {
+    setSelectedEpisode(episode);
+    setEpisodeForm({
+      anime_id: episode.anime_id,
+      episode_number: episode.episode_number.toString(),
+      season_number: episode.season_number?.toString() || '1',
+      title: episode.title || '',
+      description: episode.description || '',
+      video_url: episode.video_url,
+      duration: episode.duration?.toString() || '',
+      thumbnail_url: episode.thumbnail_url || ''
+    });
+    setEpisodeDialogOpen(true);
+  };
+
+  const handleEpisodeDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this episode?')) return;
+
+    try {
+      await episodeApi.delete(id);
+      toast({ title: 'Episode deleted successfully' });
+      loadData();
+    } catch (error) {
+      console.error('Error deleting episode:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to delete episode',
         variant: 'destructive'
       });
     }
@@ -470,14 +524,26 @@ export default function Admin() {
                   </div>
                   <Dialog open={episodeDialogOpen} onOpenChange={setEpisodeDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button>
+                      <Button onClick={() => {
+                        setSelectedEpisode(null);
+                        setEpisodeForm({
+                          anime_id: '',
+                          episode_number: '',
+                          season_number: '1',
+                          title: '',
+                          description: '',
+                          video_url: '',
+                          duration: '',
+                          thumbnail_url: ''
+                        });
+                      }}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add Episode
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
-                        <DialogTitle>Add Episode</DialogTitle>
+                        <DialogTitle>{selectedEpisode ? 'Edit' : 'Add'} Episode</DialogTitle>
                       </DialogHeader>
                       <div className="space-y-4">
                         <div>
@@ -545,14 +611,80 @@ export default function Admin() {
                             rows={3}
                           />
                         </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="duration">Duration (seconds)</Label>
+                            <Input
+                              id="duration"
+                              type="number"
+                              value={episodeForm.duration}
+                              onChange={(e) => setEpisodeForm({ ...episodeForm, duration: e.target.value })}
+                              placeholder="1440"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="thumbnail_url">Thumbnail URL</Label>
+                            <Input
+                              id="thumbnail_url"
+                              value={episodeForm.thumbnail_url}
+                              onChange={(e) => setEpisodeForm({ ...episodeForm, thumbnail_url: e.target.value })}
+                            />
+                          </div>
+                        </div>
                         <Button onClick={handleEpisodeSubmit} className="w-full">
-                          Create Episode
+                          {selectedEpisode ? 'Update' : 'Create'} Episode
                         </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
                 </div>
               </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Anime</TableHead>
+                      <TableHead>Episode</TableHead>
+                      <TableHead>Season</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {episodes.map((ep: any) => {
+                      const animeItem = anime.find(a => a.id === ep.anime_id);
+                      return (
+                        <TableRow key={ep.id}>
+                          <TableCell className="font-medium">{animeItem?.title || 'Unknown'}</TableCell>
+                          <TableCell>{ep.episode_number}</TableCell>
+                          <TableCell>{ep.season_number || 1}</TableCell>
+                          <TableCell>{ep.title || '-'}</TableCell>
+                          <TableCell>{ep.duration ? `${ep.duration}s` : '-'}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleEpisodeEdit(ep)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleEpisodeDelete(ep.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </CardContent>
             </Card>
           </TabsContent>
 
