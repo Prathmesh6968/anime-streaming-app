@@ -5,6 +5,7 @@ import AnimeDetail from './pages/AnimeDetail';
 import Watch from './pages/Watch';
 import Watchlist from './pages/Watchlist';
 import Login from './pages/Login';
+import Signup from './pages/Signup';
 import Admin from './pages/Admin';
 import NotFound from './pages/NotFound';
 
@@ -47,6 +48,12 @@ const routes: RouteConfig[] = [
     name: 'Login',
     path: '/login',
     element: <Login />,
+    visible: false
+  },
+  {
+    name: 'Signup',
+    path: '/signup',
+    element: <Signup />,
     visible: false
   },
   {
