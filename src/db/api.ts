@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { Anime, Episode, Review, WatchProgress, AnimeWithProgress, EpisodeWithProgress, ReviewWithUser, ContentType } from '@/types';
+import type { Anime, Episode, Review, WatchProgress, ReviewWithUser, ContentType } from '@/types';
 
 export const animeApi = {
   async getAll(filters?: {
