@@ -45,6 +45,7 @@ export default function Admin() {
   const [episodeForm, setEpisodeForm] = useState({
     anime_id: '',
     episode_number: '',
+    season_number: '1',
     title: '',
     description: '',
     video_url: '',
@@ -169,6 +170,7 @@ export default function Admin() {
       const data = {
         anime_id: episodeForm.anime_id,
         episode_number: Number.parseInt(episodeForm.episode_number),
+        season_number: Number.parseInt(episodeForm.season_number),
         title: episodeForm.title || null,
         description: episodeForm.description || null,
         video_url: episodeForm.video_url,
@@ -182,6 +184,7 @@ export default function Admin() {
       setEpisodeForm({
         anime_id: '',
         episode_number: '',
+        season_number: '1',
         title: '',
         description: '',
         video_url: '',
@@ -495,14 +498,26 @@ export default function Admin() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div>
-                          <Label htmlFor="episode_number">Episode Number *</Label>
-                          <Input
-                            id="episode_number"
-                            type="number"
-                            value={episodeForm.episode_number}
-                            onChange={(e) => setEpisodeForm({ ...episodeForm, episode_number: e.target.value })}
-                          />
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="episode_number">Episode Number *</Label>
+                            <Input
+                              id="episode_number"
+                              type="number"
+                              value={episodeForm.episode_number}
+                              onChange={(e) => setEpisodeForm({ ...episodeForm, episode_number: e.target.value })}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="season_number">Season Number *</Label>
+                            <Input
+                              id="season_number"
+                              type="number"
+                              value={episodeForm.season_number}
+                              onChange={(e) => setEpisodeForm({ ...episodeForm, season_number: e.target.value })}
+                              min="1"
+                            />
+                          </div>
                         </div>
                         <div>
                           <Label htmlFor="episode_title">Title</Label>
