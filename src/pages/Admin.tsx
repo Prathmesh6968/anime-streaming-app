@@ -53,18 +53,15 @@ export default function Admin() {
   });
 
   useEffect(() => {
-    if (!user || profile?.role !== 'admin') {
-      navigate('/');
-      toast({
-        title: 'Access Denied',
-        description: 'You do not have permission to access this page',
-        variant: 'destructive'
-      });
+    const isAdminAuth = localStorage.getItem('adminAuth') === 'true';
+    
+    if (!isAdminAuth) {
+      navigate('/admin-login', { replace: true });
       return;
     }
 
     loadData();
-  }, [user, profile]);
+  }, []);
 
   const loadData = async () => {
     try {
