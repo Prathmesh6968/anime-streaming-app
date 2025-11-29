@@ -7,6 +7,7 @@ import Watchlist from './pages/Watchlist';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Admin from './pages/Admin';
+import AdminLogin from './pages/AdminLogin';
 import NotFound from './pages/NotFound';
 
 interface RouteConfig {
@@ -54,6 +55,12 @@ const routes: RouteConfig[] = [
     name: 'Signup',
     path: '/signup',
     element: <Signup />,
+    visible: false
+  },
+  {
+    name: 'Admin Login',
+    path: '/admin-login',
+    element: <AdminLogin />,
     visible: false
   },
   {
