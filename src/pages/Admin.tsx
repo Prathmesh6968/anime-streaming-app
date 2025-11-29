@@ -179,6 +179,28 @@ export default function Admin() {
     }
   };
 
+  const handleCreateSeason = (parentAnime: Anime) => {
+    const nextSeason = (parentAnime.season_number || 1) + 1;
+    setSelectedAnime(null);
+    setAnimeForm({
+      title: `${parentAnime.title} Season ${nextSeason}`,
+      description: parentAnime.description || '',
+      thumbnail_url: parentAnime.thumbnail_url || '',
+      banner_url: parentAnime.banner_url || '',
+      genres: parentAnime.genres?.join(', ') || '',
+      languages: parentAnime.languages?.join(', ') || '',
+      season: `Season ${nextSeason}`,
+      release_year: new Date().getFullYear().toString(),
+      status: 'Ongoing' as 'Ongoing' | 'Completed',
+      content_type: parentAnime.content_type || 'anime',
+      total_episodes: '',
+      next_episode_date: '',
+      series_name: parentAnime.series_name,
+      season_number: nextSeason.toString()
+    });
+    setDialogOpen(true);
+  };
+
   const handleEpisodeSubmit = async () => {
     try {
       const data = {
@@ -489,18 +511,28 @@ export default function Admin() {
                         <TableCell>{item.release_year || 'N/A'}</TableCell>
                         <TableCell>{item.rating?.toFixed(1) || 'N/A'}</TableCell>
                         <TableCell>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-wrap">
                             <Button
                               size="sm"
                               variant="outline"
                               onClick={() => handleAnimeEdit(item)}
+                              title="Edit this anime"
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
                             <Button
                               size="sm"
+                              variant="secondary"
+                              onClick={() => handleCreateSeason(item)}
+                              title="Create next season for this anime"
+                            >
+                              + Season
+                            </Button>
+                            <Button
+                              size="sm"
                               variant="destructive"
                               onClick={() => handleAnimeDelete(item.id)}
+                              title="Delete this anime"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
