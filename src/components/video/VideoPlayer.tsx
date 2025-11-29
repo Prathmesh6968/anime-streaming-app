@@ -17,14 +17,13 @@ export function VideoPlayer({
   episodeId,
   title,
   savedPosition = 0,
-  onProgressUpdate,
-  onVideoEnd
+  onProgressUpdate: _onProgressUpdate,
+  onVideoEnd: _onVideoEnd
 }: VideoPlayerProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [showResumePrompt, setShowResumePrompt] = useState(false);
   const [resumePosition, setResumePosition] = useState(0);
-  const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastSavedPositionRef = useRef(0);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     // Check if there's a saved position (more than 30 seconds and less than 95% of video)
