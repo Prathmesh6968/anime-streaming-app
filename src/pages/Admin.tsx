@@ -13,11 +13,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useAuth } from '@/hooks/use-auth';
 import { useToast } from '@/hooks/use-toast';
 import { animeApi, episodeApi, profileApi } from '@/db/api';
-import type { Anime, Episode, Profile } from '@/types';
+import type { Anime, Profile } from '@/types';
 import { Plus, Edit, Trash2, Shield } from 'lucide-react';
 
 export default function Admin() {
-  const { user, profile } = useAuth();
+  const {} = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
