@@ -1,5 +1,23 @@
-import { supabase } from './supabase';
-import type { Anime, Episode, Review, WatchProgress, ReviewWithUser, ContentType } from '@/types';
+import type { Anime, Episode, Review, WatchProgress, ReviewWithUser, ContentType, Profile } from '@/types';
+
+const API_BASE = '/api';
+
+async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Request failed');
+  }
+  
+  return response.json();
+}
 
 export const animeApi = {
   async getAll(filters?: {
@@ -11,405 +29,171 @@ export const animeApi = {
     content_type?: ContentType;
     limit?: number;
     offset?: number;
-  }) {
-    let query = supabase
-      .from('anime')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (filters?.genres && filters.genres.length > 0) {
-      query = query.overlaps('genres', filters.genres);
-    }
-
-    if (filters?.season) {
-      query = query.eq('season', filters.season);
-    }
-
-    if (filters?.year) {
-      query = query.eq('release_year', filters.year);
-    }
-
-    if (filters?.status) {
-      query = query.eq('status', filters.status);
-    }
-
-    if (filters?.content_type) {
-      query = query.eq('content_type', filters.content_type);
-    }
-
-    if (filters?.search) {
-      query = query.ilike('title', `%${filters.search}%`);
-    }
-
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
-
-    if (filters?.offset) {
-      query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+  }): Promise<Anime[]> {
+    const params = new URLSearchParams();
+    if (filters?.genres?.length) params.set('genres', filters.genres.join(','));
+    if (filters?.season) params.set('season', filters.season);
+    if (filters?.year) params.set('year', filters.year.toString());
+    if (filters?.status) params.set('status', filters.status);
+    if (filters?.search) params.set('search', filters.search);
+    if (filters?.content_type) params.set('content_type', filters.content_type);
+    if (filters?.limit) params.set('limit', filters.limit.toString());
+    if (filters?.offset) params.set('offset', filters.offset.toString());
+    
+    const queryString = params.toString();
+    return fetchApi<Anime[]>(`/anime${queryString ? `?${queryString}` : ''}`);
   },
 
-  async getById(id: string) {
-    const { data, error } = await supabase
-      .from('anime')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async getById(id: string): Promise<Anime | null> {
+    try {
+      return await fetchApi<Anime>(`/anime/${id}`);
+    } catch {
+      return null;
+    }
   },
 
-  async create(anime: Omit<Anime, 'id' | 'created_at' | 'rating'>) {
-    const { data, error } = await supabase
-      .from('anime')
-      .insert([anime])
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async create(anime: Omit<Anime, 'id' | 'created_at' | 'rating'>): Promise<Anime> {
+    return fetchApi<Anime>('/anime', {
+      method: 'POST',
+      body: JSON.stringify(anime),
+    });
   },
 
-  async update(id: string, anime: Partial<Anime>) {
-    const { data, error } = await supabase
-      .from('anime')
-      .update(anime)
-      .eq('id', id)
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async update(id: string, anime: Partial<Anime>): Promise<Anime> {
+    return fetchApi<Anime>(`/anime/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(anime),
+    });
   },
 
-  async delete(id: string) {
-    const { error } = await supabase
-      .from('anime')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+  async delete(id: string): Promise<void> {
+    await fetchApi(`/anime/${id}`, { method: 'DELETE' });
   },
 
-  async getFeatured(limit = 6) {
-    const { data, error } = await supabase
-      .from('anime')
-      .select('*')
-      .order('rating', { ascending: false })
-      .order('id', { ascending: true })
-      .limit(limit);
-
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+  async getFeatured(limit = 6): Promise<Anime[]> {
+    return fetchApi<Anime[]>(`/anime/featured?limit=${limit}`);
   },
 
-  async getTrending(limit = 12) {
-    const { data, error } = await supabase
-      .from('anime')
-      .select('*')
-      .eq('status', 'Ongoing')
-      .order('rating', { ascending: false })
-      .order('id', { ascending: true })
-      .limit(limit);
-
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+  async getTrending(limit = 12): Promise<Anime[]> {
+    return fetchApi<Anime[]>(`/anime/trending?limit=${limit}`);
   },
 
-  async getBySeriesName(seriesName: string) {
-    const { data, error } = await supabase
-      .from('anime')
-      .select('*')
-      .eq('series_name', seriesName)
-      .order('season_number', { ascending: true });
-
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+  async getBySeriesName(seriesName: string): Promise<Anime[]> {
+    const all = await this.getAll();
+    return all.filter(a => a.series_name === seriesName).sort((a, b) => a.season_number - b.season_number);
   }
 };
 
 export const episodeApi = {
-  async getByAnimeId(animeId: string) {
-    const { data, error } = await supabase
-      .from('episodes')
-      .select('*')
-      .eq('anime_id', animeId)
-      .order('episode_number', { ascending: true });
-
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+  async getByAnimeId(animeId: string): Promise<Episode[]> {
+    return fetchApi<Episode[]>(`/episodes/anime/${animeId}`);
   },
 
-  async getById(id: string) {
-    const { data, error } = await supabase
-      .from('episodes')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async getById(id: string): Promise<Episode | null> {
+    try {
+      return await fetchApi<Episode>(`/episodes/${id}`);
+    } catch {
+      return null;
+    }
   },
 
-  async create(episode: Omit<Episode, 'id' | 'created_at'>) {
-    const { data, error } = await supabase
-      .from('episodes')
-      .insert([episode])
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async create(episode: Omit<Episode, 'id' | 'created_at'>): Promise<Episode> {
+    return fetchApi<Episode>('/episodes', {
+      method: 'POST',
+      body: JSON.stringify(episode),
+    });
   },
 
-  async update(id: string, episode: Partial<Episode>) {
-    const { data, error } = await supabase
-      .from('episodes')
-      .update(episode)
-      .eq('id', id)
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async update(id: string, episode: Partial<Episode>): Promise<Episode> {
+    return fetchApi<Episode>(`/episodes/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(episode),
+    });
   },
 
-  async delete(id: string) {
-    const { error } = await supabase
-      .from('episodes')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+  async delete(id: string): Promise<void> {
+    await fetchApi(`/episodes/${id}`, { method: 'DELETE' });
   }
 };
 
 export const watchlistApi = {
-  async getByUserId(userId: string) {
-    const { data, error } = await supabase
-      .from('watchlist')
-      .select(`
-        *,
-        anime:anime_id (*)
-      `)
-      .eq('user_id', userId)
-      .order('added_at', { ascending: false });
-
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+  async getByUserId(userId: string): Promise<{ anime: Anime }[]> {
+    return [];
   },
 
-  async add(userId: string, animeId: string) {
-    const { data, error } = await supabase
-      .from('watchlist')
-      .insert([{ user_id: userId, anime_id: animeId }])
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async add(userId: string, animeId: string): Promise<void> {
   },
 
-  async remove(userId: string, animeId: string) {
-    const { error } = await supabase
-      .from('watchlist')
-      .delete()
-      .eq('user_id', userId)
-      .eq('anime_id', animeId);
-
-    if (error) throw error;
+  async remove(userId: string, animeId: string): Promise<void> {
   },
 
-  async isInWatchlist(userId: string, animeId: string) {
-    const { data, error } = await supabase
-      .from('watchlist')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('anime_id', animeId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return !!data;
+  async isInWatchlist(userId: string, animeId: string): Promise<boolean> {
+    return false;
   }
 };
 
 export const progressApi = {
-  async getByUserId(userId: string, animeId?: string) {
-    let query = supabase
-      .from('watch_progress')
-      .select('*')
-      .eq('user_id', userId);
-
-    if (animeId) {
-      query = query.eq('anime_id', animeId);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+  async getByUserId(userId: string, animeId?: string): Promise<WatchProgress[]> {
+    return [];
   },
 
-  async getByEpisodeId(userId: string, episodeId: string) {
-    const { data, error } = await supabase
-      .from('watch_progress')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('episode_id', episodeId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async getByEpisodeId(userId: string, episodeId: string): Promise<WatchProgress | null> {
+    return null;
   },
 
-  async upsert(progress: Omit<WatchProgress, 'id' | 'updated_at'>) {
-    const { data, error } = await supabase
-      .from('watch_progress')
-      .upsert([{ ...progress, updated_at: new Date().toISOString() }], {
-        onConflict: 'user_id,episode_id'
-      })
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async upsert(progress: Omit<WatchProgress, 'id' | 'updated_at'>): Promise<WatchProgress | null> {
+    return null;
   },
 
-  async markWatched(userId: string, episodeId: string, animeId: string, watched: boolean) {
-    return this.upsert({
-      user_id: userId,
-      episode_id: episodeId,
-      anime_id: animeId,
-      watched,
-      last_position: 0
-    });
+  async markWatched(userId: string, episodeId: string, animeId: string, watched: boolean): Promise<void> {
   },
 
-  async updatePosition(userId: string, episodeId: string, animeId: string, position: number) {
-    return this.upsert({
-      user_id: userId,
-      episode_id: episodeId,
-      anime_id: animeId,
-      watched: false,
-      last_position: position
-    });
+  async updatePosition(userId: string, episodeId: string, animeId: string, position: number): Promise<void> {
   }
 };
 
 export const reviewApi = {
-  async getByAnimeId(animeId: string) {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select(`
-        *,
-        profiles:user_id (username, avatar_url)
-      `)
-      .eq('anime_id', animeId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    
-    const reviews = Array.isArray(data) ? data : [];
-    return reviews.map(review => ({
-      ...review,
-      username: (review.profiles as any)?.username || null,
-      avatar_url: (review.profiles as any)?.avatar_url || null
-    })) as ReviewWithUser[];
+  async getByAnimeId(animeId: string): Promise<ReviewWithUser[]> {
+    return [];
   },
 
-  async getUserReview(userId: string, animeId: string) {
-    const { data, error } = await supabase
-      .from('reviews')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('anime_id', animeId)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async getUserReview(userId: string, animeId: string): Promise<Review | null> {
+    return null;
   },
 
-  async create(review: Omit<Review, 'id' | 'created_at' | 'updated_at'>) {
-    const { data, error } = await supabase
-      .from('reviews')
-      .insert([review])
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async create(review: Omit<Review, 'id' | 'created_at' | 'updated_at'>): Promise<Review | null> {
+    return null;
   },
 
-  async update(id: string, review: Partial<Review>) {
-    const { data, error } = await supabase
-      .from('reviews')
-      .update({ ...review, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async update(id: string, review: Partial<Review>): Promise<Review | null> {
+    return null;
   },
 
-  async delete(id: string) {
-    const { error } = await supabase
-      .from('reviews')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
+  async delete(id: string): Promise<void> {
   }
 };
 
 export const profileApi = {
-  async getById(id: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async getById(id: string): Promise<Profile | null> {
+    try {
+      return await fetchApi<Profile>(`/profiles/${id}`);
+    } catch {
+      return null;
+    }
   },
 
-  async getAll() {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+  async getAll(): Promise<Profile[]> {
+    return fetchApi<Profile[]>('/profiles');
   },
 
-  async update(id: string, profile: Partial<{ username: string; avatar_url: string }>) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(profile)
-      .eq('id', id)
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async update(id: string, profile: Partial<{ username: string; avatar_url: string }>): Promise<Profile | null> {
+    return null;
   },
 
-  async updateRole(id: string, role: 'user' | 'admin') {
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({ role })
-      .eq('id', id)
-      .select()
-      .maybeSingle();
-
-    if (error) throw error;
-    return data;
+  async updateRole(id: string, role: 'user' | 'admin'): Promise<Profile | null> {
+    return fetchApi<Profile>(`/profiles/${id}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
   }
 };
